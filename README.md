@@ -8,9 +8,16 @@ Candidates are extracted via regex, then validated with Luhn / libphonenumber / 
 
 ### Homebrew
 
+The formula lives in this repository rather than in a separate `homebrew-inkshade`
+tap, so give `brew tap` the repository URL:
+
 ```bash
-brew install toritori0318/inkshade/inkshade
+brew tap toritori0318/inkshade https://github.com/toritori0318/inkshade
+brew install inkshade
 ```
+
+If Homebrew refuses to load the formula from an untrusted tap, run
+`brew trust toritori0318/inkshade` and install again.
 
 ### go install
 
