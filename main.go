@@ -21,7 +21,7 @@ func main() {
 	disable := flag.String("disable", "", "comma-separated rule IDs to disable")
 	replace := flag.String("replace", "", "custom replacements: email=[E],phone=[TEL]")
 	format := flag.String("format", "text", "output format: text, json, ndjson")
-	preset := flag.String("preset", "", "rule preset: jp-strict")
+	preset := flag.String("preset", "", "rule preset: jp-strict, secrets, all")
 	maskStyle := flag.String("mask-style", "label", "mask style: label, partial, pseudo")
 	dryRun := flag.Bool("dry-run", false, "show diff of changes without modifying")
 	gitStaged := flag.Bool("git-staged", false, "scan git staged files")
