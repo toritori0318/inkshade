@@ -44,6 +44,7 @@ type Rule struct {
 	Replace  string
 	Validate func(string) bool
 	Priority int
+	Group    int // capture group index used as the finding span (0 = whole match)
 }
 
 type Finding struct {
@@ -174,28 +175,20 @@ func ValidatePreset(preset string) error {
 }
 
 func NewEngine(cfg Config) *Engine {
-	sourceRules := allRulesWithJP()
+	sourceRules := allRulesWithSecrets()
 
 	var rules []Rule
 	for _, r := range sourceRules {
 		if cfg.Disabled[r.ID] {
 			continue
 		}
+		// With no preset, only defaultRules are active.
 		if cfg.EnabledPreset != "" {
 			if !isRuleInPreset(cfg.EnabledPreset, r.ID) {
 				continue
 			}
-		} else {
-			isJPExtra := false
-			for _, jp := range jpExtraRules {
-				if r.ID == jp.ID {
-					isJPExtra = true
-					break
-				}
-			}
-			if isJPExtra {
-				continue
-			}
+		} else if isExtraRuleID(r.ID) {
+			continue
 		}
 		if repl, ok := cfg.Replacements[r.ID]; ok {
 			r.Replace = repl
@@ -208,6 +201,20 @@ func NewEngine(cfg Config) *Engine {
 	return &Engine{rules: rules, config: cfg, ctxValidators: contextualValidators()}
 }
 
+func isExtraRuleID(id string) bool {
+	for _, r := range jpExtraRules {
+		if id == r.ID {
+			return true
+		}
+	}
+	for _, r := range secretsRules {
+		if id == r.ID {
+			return true
+		}
+	}
+	return false
+}
+
 func (e *Engine) Detect(s string) []Finding {
 	s = normalize(s)
 	var candidates []Finding
@@ -215,9 +222,21 @@ func (e *Engine) Detect(s string) []Finding {
 	for _, rule := range e.rules {
 		validator := contextualDetect(rule, s, e.ctxValidators)
 
-		locs := rule.Pattern.FindAllStringIndex(s, -1)
+		var locs [][]int
+		if rule.Group > 0 {
+			locs = rule.Pattern.FindAllStringSubmatchIndex(s, -1)
+		} else {
+			locs = rule.Pattern.FindAllStringIndex(s, -1)
+		}
 		for _, loc := range locs {
-			matched := s[loc[0]:loc[1]]
+			start, end := loc[0], loc[1]
+			if rule.Group > 0 {
+				start, end = loc[2*rule.Group], loc[2*rule.Group+1]
+				if start < 0 {
+					continue
+				}
+			}
+			matched := s[start:end]
 			if validator != nil && !validator(matched) {
 				continue
 			}
@@ -227,8 +246,8 @@ func (e *Engine) Detect(s string) []Finding {
 			candidates = append(candidates, Finding{
 				RuleID:  rule.ID,
 				Name:    rule.Name,
-				Start:   loc[0],
-				End:     loc[1],
+				Start:   start,
+				End:     end,
 				Text:    matched,
 				Replace: rule.Replace,
 			})
