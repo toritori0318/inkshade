@@ -108,7 +108,7 @@ var secretsPrefixes = map[string][]string{
 
 const secretsMaskPlaceholder = "***MASKED***"
 
-// minBodyEntropy rejects degenerate bodies (padding like "aaaa…"). It is set
+// minBodyEntropy rejects degenerate bodies (padding like "aaaa..."). It is set
 // low on purpose: every real key sits far above it, so this must never become
 // a tuning knob that silently narrows what we detect.
 const minBodyEntropy = 3.0

@@ -233,7 +233,7 @@ func TestJPStrictPresetDoesNotDetectSecrets(t *testing.T) {
 	}
 }
 
-func TestAllPresetDetectsPIIAndSecrets(t *testing.T) {
+func TestAllPresetDetectsEmailAndSecrets(t *testing.T) {
 	e := newSecretsEngine(t, "all")
 	input := "tanaka@example.com " + minimalSecrets["aws_access_key"]
 	findings := e.Detect(input)
