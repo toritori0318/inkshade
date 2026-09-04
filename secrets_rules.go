@@ -1,7 +1,9 @@
 package main
 
 import (
+	"math"
 	"regexp"
+	"strings"
 )
 
 // Credential rules are derived from the author's own pre-commit hook and
@@ -17,8 +19,9 @@ var secretsRules = []Rule{
 		ID: "klaviyo_pk", Name: "Klaviyo Private API Key", Priority: 100, Group: 1,
 		// Stripe publishable keys (pk_live_/pk_test_) do not match: the
 		// body class excludes "_", so "live"/"test" is too short.
-		Pattern: regexp.MustCompile(`(?:^|[^0-9A-Za-z_])(pk_[0-9A-Za-z]{30,})(?:[^0-9A-Za-z_]|$)`),
-		Replace: "[KLAVIYO_PK]",
+		Pattern:  regexp.MustCompile(`(?:^|[^0-9A-Za-z_])(pk_[0-9A-Za-z]{30,})(?:[^0-9A-Za-z_]|$)`),
+		Replace:  "[KLAVIYO_PK]",
+		Validate: secretBodyEntropy("klaviyo_pk", minBodyEntropy),
 	},
 	{
 		ID: "stripe_sk", Name: "Stripe Secret Key", Priority: 101, Group: 1,
@@ -50,8 +53,9 @@ var secretsRules = []Rule{
 		ID: "meta_token", Name: "Meta Access Token", Priority: 106, Group: 1,
 		// "EAA" is a common trigram inside base64 blobs, so this rule carries
 		// the highest false-positive risk of the ten; entropy cuts padding.
-		Pattern: regexp.MustCompile(`(?:^|[^0-9A-Za-z_])(EAA[0-9A-Za-z]{30,})(?:[^0-9A-Za-z_]|$)`),
-		Replace: "[META_TOKEN]",
+		Pattern:  regexp.MustCompile(`(?:^|[^0-9A-Za-z_])(EAA[0-9A-Za-z]{30,})(?:[^0-9A-Za-z_]|$)`),
+		Replace:  "[META_TOKEN]",
+		Validate: secretBodyEntropy("meta_token", minBodyEntropy),
 	},
 	{
 		ID: "slack_token", Name: "Slack Token", Priority: 107, Group: 1,
@@ -103,6 +107,44 @@ var secretsPrefixes = map[string][]string{
 }
 
 const secretsMaskPlaceholder = "***MASKED***"
+
+// minBodyEntropy rejects degenerate bodies (padding like "aaaa…"). It is set
+// low on purpose: every real key sits far above it, so this must never become
+// a tuning knob that silently narrows what we detect.
+const minBodyEntropy = 3.0
+
+func shannonEntropy(s string) float64 {
+	if s == "" {
+		return 0
+	}
+	counts := map[rune]int{}
+	n := 0
+	for _, r := range s {
+		counts[r]++
+		n++
+	}
+	var h float64
+	for _, c := range counts {
+		p := float64(c) / float64(n)
+		h -= p * math.Log2(p)
+	}
+	return h
+}
+
+// secretBodyEntropy reads secretsPrefixes at match time, not at init time, so
+// package-level initialization order does not matter.
+func secretBodyEntropy(ruleID string, min float64) func(string) bool {
+	return func(s string) bool {
+		body := s
+		for _, p := range secretsPrefixes[ruleID] {
+			if strings.HasPrefix(s, p) {
+				body = s[len(p):]
+				break
+			}
+		}
+		return shannonEntropy(body) >= min
+	}
+}
 
 func partialMaskSecretToken(prefixes []string) func(string) string {
 	return func(s string) string {

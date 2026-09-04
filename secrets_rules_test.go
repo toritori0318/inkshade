@@ -1,6 +1,10 @@
 package main
 
-import "testing"
+import (
+	"math"
+	"strings"
+	"testing"
+)
 
 func newSecretsEngine(t *testing.T, preset string) *Engine {
 	t.Helper()
@@ -501,5 +505,51 @@ func TestStripePublishableKeyIsNotKlaviyo(t *testing.T) {
 		if f.RuleID == "klaviyo_pk" {
 			t.Errorf("pk_live_ matched klaviyo_pk: %v", findings)
 		}
+	}
+}
+
+func TestShannonEntropy(t *testing.T) {
+	tests := []struct {
+		in   string
+		want float64
+	}{
+		{"", 0},
+		{"aaaa", 0},
+		{"ab", 1.0},
+		{"abcd", 2.0},
+	}
+	for _, tt := range tests {
+		got := shannonEntropy(tt.in)
+		if math.Abs(got-tt.want) >= 1e-9 {
+			t.Errorf("shannonEntropy(%q) = %v, want %v", tt.in, got, tt.want)
+		}
+	}
+}
+
+func TestEntropyCutoffRejectsDegenerateBodies(t *testing.T) {
+	e := newSecretsEngine(t, "secrets")
+	if findings := e.Detect("pk_" + strings.Repeat("a", 30)); len(findings) != 0 {
+		t.Errorf("degenerate klaviyo: want 0 findings, got %v", findings)
+	}
+	if findings := e.Detect("EAA" + strings.Repeat("ab", 15)); len(findings) != 0 {
+		t.Errorf("degenerate meta: want 0 findings, got %v", findings)
+	}
+	if findings := e.Detect(minimalSecrets["klaviyo_pk"]); len(findings) != 1 {
+		t.Errorf("real klaviyo: want 1 finding, got %v", findings)
+	}
+	if findings := e.Detect(minimalSecrets["meta_token"]); len(findings) != 1 {
+		t.Errorf("real meta: want 1 finding, got %v", findings)
+	}
+}
+
+func TestEntropyCutoffIsNotAppliedToOtherRules(t *testing.T) {
+	e := newSecretsEngine(t, "secrets")
+	token := "AKIA" + strings.Repeat("A", 16)
+	findings := e.Detect(token)
+	if len(findings) != 1 {
+		t.Fatalf("degenerate AKIA: want 1 finding, got %d: %v", len(findings), findings)
+	}
+	if findings[0].RuleID != "aws_access_key" {
+		t.Errorf("RuleID = %q, want aws_access_key", findings[0].RuleID)
 	}
 }
