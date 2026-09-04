@@ -104,8 +104,8 @@ func TestProcessMaskMode(t *testing.T) {
 	if result.Output != "user [EMAIL] [PHONE]" {
 		t.Errorf("got %q", result.Output)
 	}
-	if !result.HasPII {
-		t.Error("HasPII should be true")
+	if !result.HasFindings {
+		t.Error("HasFindings should be true")
 	}
 }
 
@@ -114,19 +114,19 @@ func TestProcessDetectMode(t *testing.T) {
 	cfg.Mode = ModeDetect
 	e := NewEngine(cfg)
 	result := e.Process("tanaka@example.com")
-	if !result.HasPII {
-		t.Error("HasPII should be true")
+	if !result.HasFindings {
+		t.Error("HasFindings should be true")
 	}
 	if len(result.Findings) != 1 {
 		t.Fatalf("want 1 finding, got %d", len(result.Findings))
 	}
 }
 
-func TestProcessNoPII(t *testing.T) {
+func TestProcessNoFindings(t *testing.T) {
 	e := NewEngine(DefaultConfig())
-	result := e.Process("this text has no PII at all")
-	if result.HasPII {
-		t.Error("HasPII should be false")
+	result := e.Process("this text has no sensitive data at all")
+	if result.HasFindings {
+		t.Error("HasFindings should be false")
 	}
 }
 
@@ -153,7 +153,7 @@ func TestBackwardCompatMask(t *testing.T) {
 		{"credit card", "card 4111-1111-1111-1111", "card [CREDIT_CARD]"},
 		{"ip", "from 192.168.1.100 access", "from [IP_ADDR] access"},
 		{"postal prefix", "〒150-0002 area", "〒[POSTAL] area"},
-		{"no pii", "this text has no PII at all", "this text has no PII at all"},
+		{"no findings", "this text has no sensitive data at all", "this text has no sensitive data at all"},
 		{"mixed", "user tanaka@example.com 090-1234-5678", "user [EMAIL] [PHONE]"},
 	}
 	for _, tt := range tests {

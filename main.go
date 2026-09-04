@@ -25,7 +25,7 @@ func main() {
 	maskStyle := flag.String("mask-style", "label", "mask style: label, partial, pseudo")
 	dryRun := flag.Bool("dry-run", false, "show diff of changes without modifying")
 	gitStaged := flag.Bool("git-staged", false, "scan git staged files")
-	failOnDetect := flag.Bool("fail-on-detect", false, "exit 1 if PII detected (CI mode)")
+	failOnDetect := flag.Bool("fail-on-detect", false, "exit 1 if sensitive data detected")
 	output := flag.String("output", "", "output file (default: stdout)")
 	flag.Parse()
 
@@ -158,7 +158,7 @@ func processReader(engine *Engine, cfg Config, reader io.Reader, writer io.Write
 		line := scanner.Text()
 		result := engine.Process(line)
 
-		if result.HasPII {
+		if result.HasFindings {
 			detected = true
 		}
 
@@ -178,11 +178,11 @@ func processReader(engine *Engine, cfg Config, reader io.Reader, writer io.Write
 			switch format {
 			case "ndjson":
 				rec := map[string]any{
-					"line":    lineNum,
-					"has_pii": result.HasPII,
-					"count":   len(result.Findings),
+					"line":         lineNum,
+					"has_findings": result.HasFindings,
+					"count":        len(result.Findings),
 				}
-				if result.HasPII {
+				if result.HasFindings {
 					rules := make([]string, 0, len(result.Findings))
 					for _, f := range result.Findings {
 						rules = append(rules, f.RuleID)
@@ -192,8 +192,8 @@ func processReader(engine *Engine, cfg Config, reader io.Reader, writer io.Write
 				b, _ := json.Marshal(rec)
 				fmt.Fprintln(writer, string(b))
 			default:
-				if result.HasPII {
-					fmt.Fprintln(writer, "pii")
+				if result.HasFindings {
+					fmt.Fprintln(writer, "detected")
 				} else {
 					fmt.Fprintln(writer, "clean")
 				}
@@ -239,7 +239,7 @@ func processSarif(engine *Engine, reader io.Reader, writer io.Writer, filename s
 		lineNum++
 		line := scanner.Text()
 		result := engine.Process(line)
-		if result.HasPII {
+		if result.HasFindings {
 			detected = true
 			lines[lineNum] = lineData{Findings: result.Findings, Text: result.Input}
 		}

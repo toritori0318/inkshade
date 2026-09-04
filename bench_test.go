@@ -11,7 +11,7 @@ func BenchmarkProcessMask(b *testing.B) {
 	}
 }
 
-func BenchmarkProcessNoPII(b *testing.B) {
+func BenchmarkProcessNoFindings(b *testing.B) {
 	e := NewEngine(DefaultConfig())
 	input := "this is a normal log line with no personally identifiable information at all"
 	b.ResetTimer()

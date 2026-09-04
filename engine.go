@@ -56,10 +56,10 @@ type Finding struct {
 }
 
 type Result struct {
-	Input    string
-	Output   string
-	Findings []Finding
-	HasPII   bool
+	Input       string
+	Output      string
+	Findings    []Finding
+	HasFindings bool
 }
 
 type Engine struct {
@@ -275,9 +275,9 @@ func (e *Engine) Process(input string) Result {
 	normalized := normalize(input)
 	findings := e.Detect(input)
 	result := Result{
-		Input:    normalized,
-		Findings: findings,
-		HasPII:   len(findings) > 0,
+		Input:       normalized,
+		Findings:    findings,
+		HasFindings: len(findings) > 0,
 	}
 	if e.config.Mode == ModeMask {
 		result.Output = e.Apply(input, findings)
