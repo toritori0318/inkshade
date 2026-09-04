@@ -26,9 +26,9 @@ type sarifDriver struct {
 }
 
 type sarifResult struct {
-	RuleID    string           `json:"ruleId"`
-	Message   sarifMessage     `json:"message"`
-	Locations []sarifLocation  `json:"locations"`
+	RuleID    string          `json:"ruleId"`
+	Message   sarifMessage    `json:"message"`
+	Locations []sarifLocation `json:"locations"`
 }
 
 type sarifMessage struct {

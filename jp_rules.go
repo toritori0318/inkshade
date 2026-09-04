@@ -100,4 +100,3 @@ func contextualDetect(rule Rule, line string, ctxValidators map[string]func(line
 	}
 	return rule.Validate
 }
-
