@@ -26,7 +26,7 @@ brews:
       name: inkshade
     directory: Formula
     homepage: "https://github.com/toritori0318/inkshade"
-    description: "A CLI that masks PII and credentials in text streams"
+    description: "Mask PII and credentials in text streams"
     license: "MIT"
     install: |
       bin.install "inkshade"
