@@ -1,0 +1,11 @@
+# build artifacts
+inkshade
+*.exe
+dist/
+cover.out
+
+# Working directory for design notes and drafts.
+# Never committed: these documents reference private repositories and
+# internal file names. The Go toolchain also ignores "_"-prefixed dirs,
+# so this stays invisible to `go build ./...` and `go test ./...`.
+_work/

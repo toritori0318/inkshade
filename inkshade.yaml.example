@@ -1,0 +1,37 @@
+# inkshade configuration example
+# Usage: inkshade --config inkshade.yaml input.txt
+
+mode: mask  # mask | detect | diagnose
+mask_style: label  # label | partial | pseudo
+
+rules:
+  email:
+    enabled: true
+    replace: "[EMAIL]"
+
+  credit_card:
+    enabled: true
+    replace: "[CREDIT_CARD]"
+
+  phone:
+    enabled: true
+    replace: "[PHONE]"
+
+  postal:
+    enabled: true
+    replace: "[POSTAL]"
+
+  ip_addr:
+    enabled: false  # disable to avoid version number false positives
+    replace: "[IP]"
+
+allowlist:
+  # exact match — these values will never be masked
+  literals:
+    - "test@example.com"
+    - "127.0.0.1"
+
+  # regex patterns — matches are skipped
+  patterns:
+    - '.*@example\.com'
+    - '192\.168\.\d+\.\d+'
