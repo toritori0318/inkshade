@@ -3,7 +3,7 @@
 
 mode: mask  # mask | detect | diagnose
 mask_style: label  # label | partial | pseudo
-# preset: secrets  # jp-strict | secrets | all
+# preset: secrets  # omit for default PII + credentials; or jp-strict | secrets | all
 
 rules:
   email:

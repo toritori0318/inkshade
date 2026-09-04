@@ -182,7 +182,8 @@ func NewEngine(cfg Config) *Engine {
 		if cfg.Disabled[r.ID] {
 			continue
 		}
-		// With no preset, only defaultRules are active.
+		// With no preset, built-in personal-data rules and credential rules
+		// are active. jp-strict extras (My Number, bank account) stay opt-in.
 		if cfg.EnabledPreset != "" {
 			if !isRuleInPreset(cfg.EnabledPreset, r.ID) {
 				continue
@@ -203,11 +204,6 @@ func NewEngine(cfg Config) *Engine {
 
 func isExtraRuleID(id string) bool {
 	for _, r := range jpExtraRules {
-		if id == r.ID {
-			return true
-		}
-	}
-	for _, r := range secretsRules {
 		if id == r.ID {
 			return true
 		}

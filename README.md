@@ -29,9 +29,12 @@ go build -o inkshade .
 ## Quick Start
 
 ```bash
-# pipe (default: mask mode, PII rules only)
+# pipe (default: mask mode, PII + credentials)
 echo "contact tanaka@example.com 090-1234-5678" | inkshade
 # → contact [EMAIL] [PHONE]
+
+echo "token ghp_abcdefghijklmnopqrstuvwxyz0123456789 here" | inkshade
+# → token [GITHUB_TOKEN] here
 
 # file input
 inkshade access.log > masked.log
@@ -46,11 +49,11 @@ inkshade --mode diagnose --format ndjson app.log
 # CI mode — exit 1 if any finding
 inkshade --mode detect --fail-on-detect secrets.txt
 
-# credentials only
+# credentials only (no PII rules)
 echo "token=ghp_abcdefghijklmnopqrstuvwxyz0123456789" | inkshade --preset secrets
 # → token=[GITHUB_TOKEN]
 
-# PII + credentials
+# also enable jp-strict extras (My Number, bank account)
 echo "mail tanaka@example.com key AKIAIOSFODNN7EXAMPLE" | inkshade --preset all
 # → mail [EMAIL] key [AWS_ACCESS_KEY]
 ```
@@ -110,7 +113,7 @@ With `--format ndjson`:
 | `--output` | stdout | Output file path |
 | `--version` | — | Show version and exit |
 
-With no `--preset`, only the default PII rules run. `--preset secrets` enables credential rules only. `--preset all` enables every PII and credential rule.
+With no `--preset`, default PII rules and credential rules both run. `--preset secrets` enables credential rules only. `--preset jp-strict` adds Japan-specific PII (and does not include credentials). `--preset all` is `jp-strict` plus credentials.
 
 ## Supported PII Types
 
@@ -124,7 +127,7 @@ With no `--preset`, only the default PII rules run. `--preset secrets` enables c
 
 ### JP-Strict Preset
 
-Enable with `--preset jp-strict` to add Japan-specific rules:
+`--preset jp-strict` is an allowlist: default PII plus Japan-specific rules. It does not include credential rules.
 
 | Rule ID | Type | Label | Validation |
 |---------|------|-------|------------|
@@ -133,7 +136,7 @@ Enable with `--preset jp-strict` to add Japan-specific rules:
 
 ## Secrets Preset
 
-Enable with `--preset secrets` (credentials only) or `--preset all` (PII + credentials).
+Credential rules run by default. Use `--preset secrets` for credentials only, or `--preset all` for jp-strict PII plus credentials.
 
 | Rule ID | Type | Prefix | Label |
 |---------|------|--------|-------|
@@ -149,10 +152,10 @@ Enable with `--preset secrets` (credentials only) or `--preset all` (PII + crede
 | `anthropic_key` | Anthropic API Key | `sk-ant-` | `[ANTHROPIC_KEY]` |
 
 ```bash
-echo "token=ghp_abcdefghijklmnopqrstuvwxyz0123456789" | inkshade --preset secrets
+echo "token=ghp_abcdefghijklmnopqrstuvwxyz0123456789" | inkshade
 # → token=[GITHUB_TOKEN]
 
-echo "ghp_abcdefghijklmnopqrstuvwxyz0123456789" | inkshade --preset secrets --mask-style partial
+echo "ghp_abcdefghijklmnopqrstuvwxyz0123456789" | inkshade --mask-style partial
 # → ghp_***MASKED***
 ```
 
@@ -175,7 +178,7 @@ Preserves structure while masking sensitive digits. Credential rules keep their 
 echo "tanaka@example.com 4111111111111111 090-1234-5678" | inkshade --mask-style partial
 # → t*****@e******.com ************1111 ***-****-5678
 
-echo "ghp_abcdefghijklmnopqrstuvwxyz0123456789" | inkshade --preset secrets --mask-style partial
+echo "ghp_abcdefghijklmnopqrstuvwxyz0123456789" | inkshade --mask-style partial
 # → ghp_***MASKED***
 ```
 

@@ -205,18 +205,29 @@ func TestAWSBoundaryTreatsUnderscoreAsBoundary(t *testing.T) {
 	}
 }
 
-func TestDefaultPresetDoesNotDetectSecrets(t *testing.T) {
+func TestDefaultPresetDetectsSecrets(t *testing.T) {
 	e := NewEngine(DefaultConfig())
-	secretIDs := map[string]bool{}
-	for _, r := range secretsRules {
-		secretIDs[r.ID] = true
-	}
 	for id, token := range minimalSecrets {
 		findings := e.Detect("a " + token + " b")
+		found := false
 		for _, f := range findings {
-			if secretIDs[f.RuleID] {
-				t.Errorf("default preset: %s %q should not be detected, got %v", id, token, findings)
+			if f.RuleID == id {
+				found = true
+				break
 			}
+		}
+		if !found {
+			t.Errorf("default preset: %s %q should be detected, got %v", id, token, findings)
+		}
+	}
+}
+
+func TestDefaultPresetDoesNotEnableJPExtra(t *testing.T) {
+	e := NewEngine(DefaultConfig())
+	findings := e.Detect("my number 123456789018 口座 1234567")
+	for _, f := range findings {
+		if f.RuleID == "my_number" || f.RuleID == "bank_account" {
+			t.Errorf("default preset should not enable jp-strict extras, got %v", findings)
 		}
 	}
 }
