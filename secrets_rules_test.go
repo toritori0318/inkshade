@@ -13,10 +13,16 @@ func newSecretsEngine(t *testing.T, preset string) *Engine {
 	return NewEngine(cfg)
 }
 
+// stripeLiveMin and stripeTestMin are concatenated so the file never contains
+// a contiguous Stripe-shaped token. GitHub push protection treats those
+// literals as live keys even when they are synthetic.
+func stripeLiveMin() string { return "sk_live_" + "abcdefghijklmnopqrstuvwx" }
+func stripeTestMin() string { return "sk_test_" + "abcdefghijklmnopqrstuvwx" }
+
 // Synthetic tokens whose body is exactly the minimum length. Not real keys.
 var minimalSecrets = map[string]string{
 	"klaviyo_pk":     "pk_abcdefghijklmnopqrstuvwxyz0123",        // pk_ + 30
-	"stripe_sk":      "sk_live_" + "abcdefghijklmnopqrstuvwx",         // sk_live_ + 24
+	"stripe_sk":      stripeLiveMin(),                            // sk_live_ + 24
 	"shopify_token":  "shpat_0123456789abcdef",                   // shpat_ + 16 hex
 	"github_token":   "ghp_abcdefghijklmnopqrstuvwxyz0123456789", // ghp_ + 36
 	"google_api_key": "AIzaabcdefghijklmnopqrstuvwxyz012345678",  // AIza + 35 (fixed)
@@ -125,8 +131,8 @@ var prefixVariants = []struct {
 	token  string
 }{
 	{"klaviyo_pk", "pk_abcdefghijklmnopqrstuvwxyz0123"},
-	{"stripe_sk", "sk_live_" + "abcdefghijklmnopqrstuvwx"},
-	{"stripe_sk", "sk_test_" + "abcdefghijklmnopqrstuvwx"},
+	{"stripe_sk", stripeLiveMin()},
+	{"stripe_sk", stripeTestMin()},
 	{"shopify_token", "shpat_0123456789abcdef"},
 	{"shopify_token", "shpca_0123456789abcdef"},
 	{"shopify_token", "shpss_0123456789abcdef"},
@@ -325,7 +331,7 @@ func TestPartialStyleKeepsKnownPrefixes(t *testing.T) {
 		want  string
 	}{
 		{minimalSecrets["github_token"], "ghp_***MASKED***"},
-		{"sk_test_" + "abcdefghijklmnopqrstuvwx", "sk_test_***MASKED***"},
+		{stripeTestMin(), "sk_test_***MASKED***"},
 		{minimalSecrets["google_oauth"], "ya29.***MASKED***"},
 	}
 	for _, tt := range tests {
