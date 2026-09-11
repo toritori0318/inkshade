@@ -13,11 +13,12 @@ func newSecretsEngine(t *testing.T, preset string) *Engine {
 	return NewEngine(cfg)
 }
 
-// stripeLiveMin and stripeTestMin are concatenated so the file never contains
-// a contiguous Stripe-shaped token. GitHub push protection treats those
-// literals as live keys even when they are synthetic.
+// stripeLiveMin, stripeTestMin, and googleAPIKeyMin are concatenated so the
+// file never contains a contiguous secret-shaped token. GitHub push protection
+// treats those literals as live keys even when they are synthetic.
 func stripeLiveMin() string { return "sk_live_" + "abcdefghijklmnopqrstuvwx" }
 func stripeTestMin() string { return "sk_test_" + "abcdefghijklmnopqrstuvwx" }
+func googleAPIKeyMin() string { return "AIza" + "abcdefghijklmnopqrstuvwxyz012345678" }
 
 // Synthetic tokens whose body is exactly the minimum length. Not real keys.
 var minimalSecrets = map[string]string{
@@ -25,7 +26,7 @@ var minimalSecrets = map[string]string{
 	"stripe_sk":      stripeLiveMin(),                            // sk_live_ + 24
 	"shopify_token":  "shpat_0123456789abcdef",                   // shpat_ + 16 hex
 	"github_token":   "ghp_abcdefghijklmnopqrstuvwxyz0123456789", // ghp_ + 36
-	"google_api_key": "AIzaabcdefghijklmnopqrstuvwxyz012345678",  // AIza + 35 (fixed)
+	"google_api_key": googleAPIKeyMin(), // AIza + 35 (fixed)
 	"google_oauth":   "ya29.abcdefghijklmnopqrst",                // ya29. + 20
 	"meta_token":     "EAAabcdefghijklmnopqrstuvwxyz0123",        // EAA + 30
 	"slack_token":    "xoxb-1234567890",                          // xoxb- + 10
@@ -71,7 +72,7 @@ func TestTokensShorterThanMinimumAreNotDetected(t *testing.T) {
 		{"shopify_token body 15", "shpat_0123456789abcde"},
 		{"github_token ghp body 35", "ghp_abcdefghijklmnopqrstuvwxyz012345678"},
 		{"github_token pat body 81", githubPat81},
-		{"google_api_key body 34", "AIzaabcdefghijklmnopqrstuvwxyz01234567"},
+		{"google_api_key body 34", googleAPIKeyMin()[:len(googleAPIKeyMin())-1]},
 		{"google_oauth body 19", "ya29.abcdefghijklmnopqrs"},
 		{"meta_token body 29", "EAAabcdefghijklmnopqrstuvwxyz012"},
 		{"slack_token body 9", "xoxb-123456789"},
@@ -144,7 +145,7 @@ var prefixVariants = []struct {
 	{"github_token", "ghr_abcdefghijklmnopqrstuvwxyz0123456789"},
 	{"github_token", "ghu_abcdefghijklmnopqrstuvwxyz0123456789"},
 	{"github_token", "github_pat_abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz0123"},
-	{"google_api_key", "AIzaabcdefghijklmnopqrstuvwxyz012345678"},
+	{"google_api_key", googleAPIKeyMin()},
 	{"google_oauth", "ya29.abcdefghijklmnopqrst"},
 	{"meta_token", "EAAabcdefghijklmnopqrstuvwxyz0123"},
 	{"slack_token", "xoxb-1234567890"},
@@ -173,7 +174,7 @@ func TestMinimalLengthTokensAreDetected(t *testing.T) {
 
 func TestFixedLengthRulesRejectOversizedBodies(t *testing.T) {
 	e := newSecretsEngine(t, "secrets")
-	oversizedAIza := "AIzaabcdefghijklmnopqrstuvwxyz0123456789" // AIza + 36
+	oversizedAIza := googleAPIKeyMin() + "9" // AIza + 36
 	oversizedAKIA := "AKIAIOSFODNN7EXAMPLEX"                    // AKIA + 17
 	longerKlaviyo := "pk_abcdefghijklmnopqrstuvwxyz01234"       // pk_ + 31
 
