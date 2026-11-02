@@ -36,3 +36,11 @@ allowlist:
   patterns:
     - '.*@example\.com'
     - '192\.168\.\d+\.\d+'
+
+# Extra rules. They stay on under every preset.
+# custom_rules:
+#   - id: widget_token
+#     name: Widget Token
+#     pattern: 'widget_token=([0-9A-Za-z]{8,})'
+#     group: 1
+#     replace: "[WIDGET_TOKEN]"

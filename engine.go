@@ -26,6 +26,7 @@ type Config struct {
 	Replacements  map[string]string
 	Allowlist     Allowlist
 	EnabledPreset string
+	CustomRules   []Rule
 }
 
 func DefaultConfig() Config {
@@ -196,6 +197,19 @@ func NewEngine(cfg Config) *Engine {
 		}
 		rules = append(rules, r)
 	}
+	// Custom rules are explicit, so a preset does not turn them off.
+	for i, r := range cfg.CustomRules {
+		if cfg.Disabled[r.ID] {
+			continue
+		}
+		if repl, ok := cfg.Replacements[r.ID]; ok {
+			r.Replace = repl
+		}
+		if r.Priority == 0 {
+			r.Priority = 1000 + i
+		}
+		rules = append(rules, r)
+	}
 	sort.Slice(rules, func(i, j int) bool {
 		return rules[i].Priority < rules[j].Priority
 	})
@@ -228,9 +242,11 @@ func (e *Engine) Detect(s string) []Finding {
 			start, end := loc[0], loc[1]
 			if rule.Group > 0 {
 				start, end = loc[2*rule.Group], loc[2*rule.Group+1]
-				if start < 0 {
-					continue
-				}
+			}
+			// An empty match, such as a* between letters, would insert the
+			// replacement into every gap. A non-empty match such as .* stays.
+			if start < 0 || start == end {
+				continue
 			}
 			matched := s[start:end]
 			if validator != nil && !validator(matched) {
