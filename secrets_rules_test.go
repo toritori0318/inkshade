@@ -674,7 +674,7 @@ func TestURLQuerySecret(t *testing.T) {
 func TestURLQuerySecretKeys(t *testing.T) {
 	e := NewEngine(DefaultConfig())
 	keys := []string{
-		"api_token", "access_token", "api_key", "apikey", "key", "token",
+		"api_token", "access_token", "refresh_token", "id_token", "api_key", "apikey", "key", "token",
 		"client_secret", "secret", "password", "signature", "sig",
 		"x-goog-signature", "x-amz-signature", "x-amz-credential",
 		"x-amz-security-token", "appsecret_proof",
