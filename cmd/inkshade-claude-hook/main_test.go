@@ -100,6 +100,54 @@ func TestPostToolUseStopAlsoMasksOutput(t *testing.T) {
 	}
 }
 
+func TestPostToolUseFailureStopsWithoutEchoingTheError(t *testing.T) {
+	in := []byte(`{"hook_event_name":"PostToolUseFailure","tool_name":"Bash","error":"Exit code 1\n` + secret + `"}`)
+	out, code := run(in, "mask")
+	if code != 0 {
+		t.Fatalf("code=%d", code)
+	}
+	if strings.Contains(string(out), secret) {
+		t.Fatalf("raw secret leaked: %s", out)
+	}
+	m := decode(t, out)
+	if m["continue"] != false || m["stopReason"] == nil {
+		t.Fatalf("not stopped: %v", m)
+	}
+	if _, ok := m["hookSpecificOutput"]; ok {
+		t.Fatalf("failure event cannot replace the error: %v", m)
+	}
+}
+
+func TestPostToolUseFailurePassesCleanError(t *testing.T) {
+	out, code := run([]byte(`{"hook_event_name":"PostToolUseFailure","tool_name":"Bash","error":"Exit code 1\nnot found"}`), "stop")
+	if code != 0 || len(out) != 0 {
+		t.Fatalf("code=%d out=%s", code, out)
+	}
+}
+
+func TestPostToolBatchStopsWhenTheResultStillHasASecret(t *testing.T) {
+	in := []byte(`{"hook_event_name":"PostToolBatch","tool_calls":[{"tool_name":"Bash","tool_response":"Exit code 1\n` + secret + `"}]}`)
+	out, code := run(in, "mask")
+	if code != 0 {
+		t.Fatalf("code=%d", code)
+	}
+	if strings.Contains(string(out), secret) {
+		t.Fatalf("raw secret leaked: %s", out)
+	}
+	m := decode(t, out)
+	if m["continue"] != false || m["decision"] != "block" {
+		t.Fatalf("not stopped: %v", m)
+	}
+}
+
+func TestPostToolBatchPassesACleanBatch(t *testing.T) {
+	in := []byte(`{"hook_event_name":"PostToolBatch","tool_calls":[{"tool_name":"Bash","tool_response":"Exit code 1\nnot found"}]}`)
+	out, code := run(in, "stop")
+	if code != 0 || len(out) != 0 {
+		t.Fatalf("code=%d out=%s", code, out)
+	}
+}
+
 func TestRunExits2OnInvalidInput(t *testing.T) {
 	if _, code := run([]byte(`{`), "stop"); code != 2 {
 		t.Fatalf("code=%d", code)

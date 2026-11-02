@@ -14,6 +14,21 @@
           { "type": "command", "command": "inkshade-claude-hook", "onFailure": "block" }
         ]
       }
+    ],
+    "PostToolUseFailure": [
+      {
+        "matcher": "*",
+        "hooks": [
+          { "type": "command", "command": "inkshade-claude-hook", "onFailure": "block" }
+        ]
+      }
+    ],
+    "PostToolBatch": [
+      {
+        "hooks": [
+          { "type": "command", "command": "inkshade-claude-hook", "onFailure": "block" }
+        ]
+      }
     ]
   }
 }

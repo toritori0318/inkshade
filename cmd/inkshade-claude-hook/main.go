@@ -16,6 +16,8 @@ type hookInput struct {
 	HookEventName string `json:"hook_event_name"`
 	Prompt        string `json:"prompt"`
 	ToolResponse  any    `json:"tool_response"`
+	Error         any    `json:"error"`
+	ToolCalls     any    `json:"tool_calls"`
 }
 
 func run(in []byte, action string) ([]byte, int) {
@@ -60,6 +62,30 @@ func run(in []byte, action string) ([]byte, int) {
 			out["stopReason"] = "inkshade: stopped because the tool output contains sensitive data (Claude only receives the masked output)"
 		}
 		return mustJSON(out), 0
+	case "PostToolUseFailure":
+		// No updatedToolOutput on this event. continue:false is not enough on its
+		// own: Claude Code 2.1.312 still makes the model call. PostToolBatch, which
+		// runs after this and sees the same error text, is what stops that call.
+		if _, found := mask(h.Error); !found {
+			return nil, 0
+		}
+		return mustJSON(map[string]any{
+			"continue":   false,
+			"stopReason": "inkshade: stopped because a failed tool result contains sensitive data (the error text cannot be masked and remains in the transcript)",
+		}), 0
+	case "PostToolBatch":
+		// tool_calls is the text about to be sent. Successful results were already
+		// masked by PostToolUse, so a clean batch passes through. A failed command's
+		// output cannot be masked and still shows up here.
+		if _, found := mask(h.ToolCalls); !found {
+			return nil, 0
+		}
+		return mustJSON(map[string]any{
+			"decision":   "block",
+			"reason":     "inkshade: stopped because a tool result still contains sensitive data",
+			"continue":   false,
+			"stopReason": "inkshade: stopped because a tool result still contains sensitive data (a failed command's output cannot be masked and remains in the transcript)",
+		}), 0
 	}
 	return nil, 0
 }
