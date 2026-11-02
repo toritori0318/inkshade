@@ -73,6 +73,13 @@ var secretsRules = []Rule{
 		Pattern: regexp.MustCompile(`(?:^|[^0-9A-Za-z_-])(sk-ant-[0-9A-Za-z_-]{20,})(?:[^0-9A-Za-z_-]|$)`),
 		Replace: "[ANTHROPIC_KEY]",
 	},
+	{
+		ID: "url_query_secret", Name: "URL Query Secret", Priority: 110, Group: 1,
+		// The character before the key is ? or &, so a bare "key=value" in a
+		// log line does not match. Group 1 is the value: the key stays visible.
+		Pattern: regexp.MustCompile(`(?i)[?&](?:x-amz-security-token|x-amz-credential|x-goog-signature|x-amz-signature|appsecret_proof|client_secret|access_token|refresh_token|id_token|api_token|api_key|apikey|password|signature|secret|token|key|sig)=([^&\s"'#]+)`),
+		Replace: "[URL_SECRET]",
+	},
 }
 
 func secretsRuleIDList() []string {

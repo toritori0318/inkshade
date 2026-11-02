@@ -157,6 +157,9 @@ Credential rules run by default. Use `--preset secrets` for credentials only, or
 | `slack_token` | Slack Token | `xoxb-` / `xoxp-` | `[SLACK_TOKEN]` |
 | `aws_access_key` | AWS Access Key ID | `AKIA` | `[AWS_ACCESS_KEY]` |
 | `anthropic_key` | Anthropic API Key | `sk-ant-` | `[ANTHROPIC_KEY]` |
+| `url_query_secret` | Secret in a URL query (`api_token`, `signature`, …) | — | `[URL_SECRET]` |
+
+`url_query_secret` matches the parameter name, not the shape of the token. The name stays, and the value becomes `[URL_SECRET]`. It only matches after `?` or `&`, so a log field like `key=value` is left alone. With `--mask-style partial`, the value is replaced with asterisks of the same length.
 
 ```bash
 echo "token=ghp_abcdefghijklmnopqrstuvwxyz0123456789" | inkshade
