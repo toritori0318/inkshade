@@ -26,6 +26,7 @@ type Config struct {
 	Replacements  map[string]string
 	Allowlist     Allowlist
 	EnabledPreset string
+	CustomRules   []Rule
 }
 
 func DefaultConfig() Config {
@@ -193,6 +194,19 @@ func NewEngine(cfg Config) *Engine {
 		}
 		if repl, ok := cfg.Replacements[r.ID]; ok {
 			r.Replace = repl
+		}
+		rules = append(rules, r)
+	}
+	// Custom rules are explicit, so a preset does not turn them off.
+	for i, r := range cfg.CustomRules {
+		if cfg.Disabled[r.ID] {
+			continue
+		}
+		if repl, ok := cfg.Replacements[r.ID]; ok {
+			r.Replace = repl
+		}
+		if r.Priority == 0 {
+			r.Priority = 1000 + i
 		}
 		rules = append(rules, r)
 	}

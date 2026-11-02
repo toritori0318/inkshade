@@ -242,7 +242,16 @@ allowlist:
   patterns:
     - '.*@example\.com'
     - '192\.168\.\d+\.\d+'
+
+custom_rules:
+  - id: widget_token
+    name: Widget Token
+    pattern: 'widget_token=([0-9A-Za-z]{8,})'
+    group: 1
+    replace: "[WIDGET_TOKEN]"
 ```
+
+`custom_rules` stay on under every preset, including `secrets`. `--disable widget_token` turns one off. An `id` that matches a built-in rule is a config error. `group` is the capture group to replace; omit it to replace the whole match. Priorities start at 1000, in the order written.
 
 ```bash
 inkshade --config inkshade.yaml input.txt

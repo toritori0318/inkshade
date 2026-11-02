@@ -45,12 +45,21 @@ type yamlRuleConfig struct {
 	Replace string `yaml:"replace"`
 }
 
+type yamlCustomRule struct {
+	ID      string `yaml:"id"`
+	Name    string `yaml:"name"`
+	Pattern string `yaml:"pattern"`
+	Group   int    `yaml:"group"`
+	Replace string `yaml:"replace"`
+}
+
 type yamlConfig struct {
-	Mode      string                    `yaml:"mode"`
-	MaskStyle string                    `yaml:"mask_style"`
-	Preset    string                    `yaml:"preset"`
-	Rules     map[string]yamlRuleConfig `yaml:"rules"`
-	Allowlist Allowlist                 `yaml:"allowlist"`
+	Mode        string                    `yaml:"mode"`
+	MaskStyle   string                    `yaml:"mask_style"`
+	Preset      string                    `yaml:"preset"`
+	Rules       map[string]yamlRuleConfig `yaml:"rules"`
+	CustomRules []yamlCustomRule          `yaml:"custom_rules"`
+	Allowlist   Allowlist                 `yaml:"allowlist"`
 }
 
 func LoadConfig(path string) (Config, error) {
@@ -92,5 +101,58 @@ func LoadConfig(path string) (Config, error) {
 		return Config{}, err
 	}
 
+	custom, err := compileCustomRules(yc.CustomRules)
+	if err != nil {
+		return Config{}, err
+	}
+	cfg.CustomRules = custom
+
 	return cfg, nil
+}
+
+func compileCustomRules(list []yamlCustomRule) ([]Rule, error) {
+	builtin := map[string]bool{}
+	for _, r := range allRulesWithSecrets() {
+		builtin[r.ID] = true
+	}
+	seen := map[string]bool{}
+	out := make([]Rule, 0, len(list))
+	for i, rc := range list {
+		if rc.ID == "" {
+			return nil, fmt.Errorf("custom rule %d: id is required", i)
+		}
+		if builtin[rc.ID] {
+			return nil, fmt.Errorf("custom rule %q: id matches a built-in rule", rc.ID)
+		}
+		if seen[rc.ID] {
+			return nil, fmt.Errorf("custom rule %q: duplicate id", rc.ID)
+		}
+		if rc.Pattern == "" {
+			return nil, fmt.Errorf("custom rule %q: pattern is required", rc.ID)
+		}
+		re, err := regexp.Compile(rc.Pattern)
+		if err != nil {
+			return nil, fmt.Errorf("custom rule %q: invalid pattern: %w", rc.ID, err)
+		}
+		if rc.Group < 0 || rc.Group > re.NumSubexp() {
+			return nil, fmt.Errorf("custom rule %q: group %d is out of range", rc.ID, rc.Group)
+		}
+		if rc.Replace == "" {
+			return nil, fmt.Errorf("custom rule %q: replace is required", rc.ID)
+		}
+		name := rc.Name
+		if name == "" {
+			name = rc.ID
+		}
+		seen[rc.ID] = true
+		out = append(out, Rule{
+			ID:       rc.ID,
+			Name:     name,
+			Pattern:  re,
+			Replace:  rc.Replace,
+			Priority: 1000 + i,
+			Group:    rc.Group,
+		})
+	}
+	return out, nil
 }

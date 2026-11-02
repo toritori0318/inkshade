@@ -149,3 +149,145 @@ allowlist:
 		t.Error("expected error for invalid allowlist regex")
 	}
 }
+
+func TestCustomRuleReplacesMatch(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "inkshade.yaml")
+	os.WriteFile(path, []byte(`
+custom_rules:
+  - id: widget_token
+    name: Widget Token
+    pattern: 'WIDGET-[0-9A-Za-z]{8}'
+    replace: "[WIDGET_TOKEN]"
+`), 0644)
+
+	cfg, err := LoadConfig(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	result := NewEngine(cfg).Process("id WIDGET-abcdefgh end")
+	if result.Output != "id [WIDGET_TOKEN] end" {
+		t.Errorf("Output = %q", result.Output)
+	}
+}
+
+func TestCustomRuleGroupReplacesOnlyTheGroup(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "inkshade.yaml")
+	os.WriteFile(path, []byte(`
+custom_rules:
+  - id: widget_token
+    name: Widget Token
+    pattern: 'widget_token=([0-9A-Za-z]{8,})'
+    group: 1
+    replace: "[WIDGET_TOKEN]"
+`), 0644)
+
+	cfg, err := LoadConfig(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	result := NewEngine(cfg).Process("widget_token=abcdefgh&x=1")
+	if result.Output != "widget_token=[WIDGET_TOKEN]&x=1" {
+		t.Errorf("Output = %q", result.Output)
+	}
+}
+
+func TestCustomRuleInvalidPattern(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "inkshade.yaml")
+	os.WriteFile(path, []byte(`
+custom_rules:
+  - id: widget_token
+    name: Widget Token
+    pattern: '[invalid'
+    replace: "[WIDGET_TOKEN]"
+`), 0644)
+
+	_, err := LoadConfig(path)
+	if err == nil {
+		t.Error("expected error for invalid custom rule pattern")
+	}
+}
+
+func TestCustomRuleRejectsBuiltInID(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "inkshade.yaml")
+	os.WriteFile(path, []byte(`
+custom_rules:
+  - id: email
+    name: Email
+    pattern: 'widget_token=[0-9A-Za-z]+'
+    replace: "[WIDGET_TOKEN]"
+`), 0644)
+
+	_, err := LoadConfig(path)
+	if err == nil {
+		t.Error("expected error when custom rule id matches a built-in rule")
+	}
+}
+
+func TestCustomRuleRejectsGroupOutOfRange(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "inkshade.yaml")
+	os.WriteFile(path, []byte(`
+custom_rules:
+  - id: widget_token
+    name: Widget Token
+    pattern: '(abc)'
+    group: 2
+    replace: "[WIDGET_TOKEN]"
+`), 0644)
+
+	_, err := LoadConfig(path)
+	if err == nil {
+		t.Error("expected error when group is out of range")
+	}
+}
+
+func TestDisableDropsCustomRule(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "inkshade.yaml")
+	os.WriteFile(path, []byte(`
+custom_rules:
+  - id: widget_token
+    name: Widget Token
+    pattern: 'widget_token=([0-9A-Za-z]{8,})'
+    group: 1
+    replace: "[WIDGET_TOKEN]"
+`), 0644)
+
+	cfg, err := LoadConfig(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cfg.Disabled["widget_token"] = true
+	result := NewEngine(cfg).Process("widget_token=abcdefgh")
+	if result.Output != "widget_token=abcdefgh" {
+		t.Errorf("Output = %q", result.Output)
+	}
+}
+
+func TestCustomRuleStaysOnUnderSecretsPreset(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "inkshade.yaml")
+	os.WriteFile(path, []byte(`
+preset: secrets
+custom_rules:
+  - id: widget_token
+    name: Widget Token
+    pattern: 'widget_token=([0-9A-Za-z]{8,})'
+    group: 1
+    replace: "[WIDGET_TOKEN]"
+`), 0644)
+
+	cfg, err := LoadConfig(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	result := NewEngine(cfg).Process("tanaka@example.com widget_token=abcdefgh")
+	want := "tanaka@example.com widget_token=[WIDGET_TOKEN]"
+	if result.Output != want {
+		t.Errorf("Output = %q, want %q", result.Output, want)
+	}
+}
