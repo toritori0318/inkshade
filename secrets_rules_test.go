@@ -16,8 +16,8 @@ func newSecretsEngine(t *testing.T, preset string) *Engine {
 // stripeLiveMin, stripeTestMin, and googleAPIKeyMin are concatenated so the
 // file never contains a contiguous secret-shaped token. GitHub push protection
 // treats those literals as live keys even when they are synthetic.
-func stripeLiveMin() string { return "sk_live_" + "abcdefghijklmnopqrstuvwx" }
-func stripeTestMin() string { return "sk_test_" + "abcdefghijklmnopqrstuvwx" }
+func stripeLiveMin() string   { return "sk_live_" + "abcdefghijklmnopqrstuvwx" }
+func stripeTestMin() string   { return "sk_test_" + "abcdefghijklmnopqrstuvwx" }
 func googleAPIKeyMin() string { return "AIza" + "abcdefghijklmnopqrstuvwxyz012345678" }
 
 // Synthetic tokens whose body is exactly the minimum length. Not real keys.
@@ -26,7 +26,7 @@ var minimalSecrets = map[string]string{
 	"stripe_sk":      stripeLiveMin(),                            // sk_live_ + 24
 	"shopify_token":  "shpat_0123456789abcdef",                   // shpat_ + 16 hex
 	"github_token":   "ghp_abcdefghijklmnopqrstuvwxyz0123456789", // ghp_ + 36
-	"google_api_key": googleAPIKeyMin(), // AIza + 35 (fixed)
+	"google_api_key": googleAPIKeyMin(),                          // AIza + 35 (fixed)
 	"google_oauth":   "ya29.abcdefghijklmnopqrst",                // ya29. + 20
 	"meta_token":     "EAAabcdefghijklmnopqrstuvwxyz0123",        // EAA + 30
 	"slack_token":    "xoxb-1234567890",                          // xoxb- + 10
@@ -174,9 +174,9 @@ func TestMinimalLengthTokensAreDetected(t *testing.T) {
 
 func TestFixedLengthRulesRejectOversizedBodies(t *testing.T) {
 	e := newSecretsEngine(t, "secrets")
-	oversizedAIza := googleAPIKeyMin() + "9" // AIza + 36
-	oversizedAKIA := "AKIAIOSFODNN7EXAMPLEX"                    // AKIA + 17
-	longerKlaviyo := "pk_abcdefghijklmnopqrstuvwxyz01234"       // pk_ + 31
+	oversizedAIza := googleAPIKeyMin() + "9"              // AIza + 36
+	oversizedAKIA := "AKIAIOSFODNN7EXAMPLEX"              // AKIA + 17
+	longerKlaviyo := "pk_abcdefghijklmnopqrstuvwxyz01234" // pk_ + 31
 
 	if findings := e.Detect("a " + oversizedAIza + " b"); len(findings) != 0 {
 		t.Errorf("AIza+36: want 0 findings, got %v", findings)
@@ -451,13 +451,23 @@ func TestSecretsTablesAreInternallyConsistent(t *testing.T) {
 		}
 	}
 
-	if len(secretsPrefixes) != len(secretIDs) {
-		t.Errorf("secretsPrefixes keys = %d, want %d", len(secretsPrefixes), len(secretIDs))
-	}
+	// url_query_secret matches a query value, not a prefixed token.
+	withoutPrefix := map[string]bool{"url_query_secret": true}
+	prefixIDs := 0
 	for id := range secretIDs {
+		if withoutPrefix[id] {
+			if _, ok := secretsPrefixes[id]; ok {
+				t.Errorf("non-prefix rule %q should not be in secretsPrefixes", id)
+			}
+			continue
+		}
+		prefixIDs++
 		if _, ok := secretsPrefixes[id]; !ok {
 			t.Errorf("secretsPrefixes missing %q", id)
 		}
+	}
+	if len(secretsPrefixes) != prefixIDs {
+		t.Errorf("secretsPrefixes keys = %d, want %d", len(secretsPrefixes), prefixIDs)
 	}
 	for id := range secretsPrefixes {
 		if !secretIDs[id] {
@@ -570,4 +580,138 @@ func TestEntropyCutoffIsNotAppliedToOtherRules(t *testing.T) {
 	if findings[0].RuleID != "aws_access_key" {
 		t.Errorf("RuleID = %q, want aws_access_key", findings[0].RuleID)
 	}
+}
+
+func TestURLQuerySecret(t *testing.T) {
+	const query = "https://example.com/api/v1/items?api_token=abc123&page=2"
+	const queryMasked = "https://example.com/api/v1/items?api_token=[URL_SECRET]&page=2"
+
+	tests := []struct {
+		name   string
+		preset string
+		style  MaskStyle
+		input  string
+		want   string
+	}{
+		{
+			name:  "api_token keeps other params",
+			input: query,
+			want:  queryMasked,
+		},
+		{
+			name:  "url.Error keeps closing quote",
+			input: `Get "https://example.com/api/v1/items?access_token=EAAxxx": dial tcp: i/o timeout`,
+			want:  `Get "https://example.com/api/v1/items?access_token=[URL_SECRET]": dial tcp: i/o timeout`,
+		},
+		{
+			name:  "question mark and ampersand",
+			input: "https://example.com/path?api_token=abc&token=def",
+			want:  "https://example.com/path?api_token=[URL_SECRET]&token=[URL_SECRET]",
+		},
+		{
+			name:  "key case is preserved",
+			input: "https://example.com/files/obj?X-Goog-Signature=abcDEF",
+			want:  "https://example.com/files/obj?X-Goog-Signature=[URL_SECRET]",
+		},
+		{
+			name:  "encoded value is fully masked",
+			input: "https://example.com/a?api_token=ab%2Fcd%3D",
+			want:  "https://example.com/a?api_token=[URL_SECRET]",
+		},
+		{
+			name:  "key outside a query is left alone",
+			input: "level=info key=value token=zzzz",
+			want:  "level=info key=value token=zzzz",
+		},
+		{
+			name:  "empty value is left alone",
+			input: "https://example.com/a?token=&x=1",
+			want:  "https://example.com/a?token=&x=1",
+		},
+		{
+			name:   "jp-strict disables the rule",
+			preset: "jp-strict",
+			input:  query,
+			want:   query,
+		},
+		{
+			name:   "secrets preset enables the rule",
+			preset: "secrets",
+			input:  query,
+			want:   queryMasked,
+		},
+		{
+			name:   "all preset enables the rule",
+			preset: "all",
+			input:  query,
+			want:   queryMasked,
+		},
+		{
+			name:  "partial style does not keep the value",
+			style: MaskStylePartial,
+			input: "https://example.com/a?api_token=abc123",
+			want:  "https://example.com/a?api_token=******",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg := DefaultConfig()
+			if tt.preset != "" {
+				cfg.EnabledPreset = tt.preset
+			}
+			if tt.style != "" {
+				cfg.MaskStyle = tt.style
+			}
+			result := NewEngine(cfg).Process(tt.input)
+			if result.Output != tt.want {
+				t.Errorf("Output = %q, want %q", result.Output, tt.want)
+			}
+		})
+	}
+}
+
+func TestURLQuerySecretKeys(t *testing.T) {
+	e := NewEngine(DefaultConfig())
+	keys := []string{
+		"api_token", "access_token", "api_key", "apikey", "key", "token",
+		"client_secret", "secret", "password", "signature", "sig",
+		"x-goog-signature", "x-amz-signature", "x-amz-credential",
+		"x-amz-security-token", "appsecret_proof",
+	}
+	for _, key := range keys {
+		input := "https://example.com/a?" + key + "=abc123&x=1"
+		want := "https://example.com/a?" + key + "=[URL_SECRET]&x=1"
+		result := e.Process(input)
+		if result.Output != want {
+			t.Errorf("%s: Output = %q, want %q", key, result.Output, want)
+		}
+	}
+}
+
+func TestURLQuerySecretDoesNotDoubleMaskKnownToken(t *testing.T) {
+	e := NewEngine(DefaultConfig())
+
+	t.Run("longer than the known token", func(t *testing.T) {
+		key := googleAPIKeyMin() + "extra"
+		result := e.Process("?key=" + key)
+		if result.Output != "?key=[URL_SECRET]" {
+			t.Fatalf("Output = %q, want ?key=[URL_SECRET]", result.Output)
+		}
+	})
+
+	// Same span as google_api_key: overlap resolution keeps one finding,
+	// so the line stays a single replacement either way.
+	t.Run("exact known token", func(t *testing.T) {
+		key := googleAPIKeyMin()
+		result := e.Process("?key=" + key)
+		if strings.Contains(result.Output, key) {
+			t.Fatalf("secret remains: %q", result.Output)
+		}
+		switch result.Output {
+		case "?key=[URL_SECRET]", "?key=[GOOGLE_API_KEY]":
+		default:
+			t.Fatalf("Output = %q, want a single replacement", result.Output)
+		}
+	})
 }
