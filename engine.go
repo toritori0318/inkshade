@@ -242,9 +242,11 @@ func (e *Engine) Detect(s string) []Finding {
 			start, end := loc[0], loc[1]
 			if rule.Group > 0 {
 				start, end = loc[2*rule.Group], loc[2*rule.Group+1]
-				if start < 0 {
-					continue
-				}
+			}
+			// An empty match, such as a* between letters, would insert the
+			// replacement into every gap. A non-empty match such as .* stays.
+			if start < 0 || start == end {
+				continue
 			}
 			matched := s[start:end]
 			if validator != nil && !validator(matched) {

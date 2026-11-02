@@ -210,6 +210,37 @@ custom_rules:
 	}
 }
 
+func TestCustomRuleZeroWidthMatchDoesNotInsertBetweenCharacters(t *testing.T) {
+	tests := []struct {
+		pattern string
+		input   string
+		want    string
+	}{
+		{pattern: "a*", input: "hello", want: "hello"},
+		{pattern: "a*", input: "aa", want: "[WIDGET_TOKEN]"},
+		{pattern: ".*", input: "hello", want: "[WIDGET_TOKEN]"},
+	}
+	for _, tt := range tests {
+		dir := t.TempDir()
+		path := filepath.Join(dir, "inkshade.yaml")
+		os.WriteFile(path, []byte(`
+custom_rules:
+  - id: widget_token
+    name: Widget Token
+    pattern: '`+tt.pattern+`'
+    replace: "[WIDGET_TOKEN]"
+`), 0644)
+		cfg, err := LoadConfig(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		result := NewEngine(cfg).Process(tt.input)
+		if result.Output != tt.want {
+			t.Errorf("pattern %q input %q: Output = %q, want %q", tt.pattern, tt.input, result.Output, tt.want)
+		}
+	}
+}
+
 func TestCustomRuleRejectsEmptyReplace(t *testing.T) {
 	cases := []string{
 		"replace: \"\"",
