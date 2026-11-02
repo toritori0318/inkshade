@@ -1,7 +1,6 @@
-package main
+package inkshade
 
 import (
-	"fmt"
 	"strings"
 )
 
@@ -98,11 +97,4 @@ func applyPartialMask(ruleID, text string) string {
 		return fn(text)
 	}
 	return partialMaskGeneric(text, 0)
-}
-
-func formatDryRunDiff(original, masked string, lineNum int) string {
-	if original == masked {
-		return ""
-	}
-	return fmt.Sprintf("@@ line %d @@\n-%s\n+%s", lineNum, original, masked)
 }

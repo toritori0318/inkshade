@@ -3,6 +3,8 @@ package main
 import (
 	"sort"
 	"unicode/utf8"
+
+	"github.com/toritori0318/inkshade/pkg/inkshade"
 )
 
 type sarifReport struct {
@@ -55,7 +57,7 @@ type sarifRegion struct {
 }
 
 type lineData struct {
-	Findings []Finding
+	Findings []inkshade.Finding
 	Text     string
 }
 

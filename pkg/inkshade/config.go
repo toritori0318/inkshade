@@ -1,4 +1,4 @@
-package main
+package inkshade
 
 import (
 	"fmt"
@@ -15,7 +15,7 @@ type Allowlist struct {
 	compiledPatterns []*regexp.Regexp
 }
 
-func (a *Allowlist) compile() error {
+func (a *Allowlist) Compile() error {
 	for _, p := range a.Patterns {
 		re, err := regexp.Compile(p)
 		if err != nil {
@@ -97,7 +97,7 @@ func LoadConfig(path string) (Config, error) {
 	}
 
 	cfg.Allowlist = yc.Allowlist
-	if err := cfg.Allowlist.compile(); err != nil {
+	if err := cfg.Allowlist.Compile(); err != nil {
 		return Config{}, err
 	}
 

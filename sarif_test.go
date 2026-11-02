@@ -3,10 +3,12 @@ package main
 import (
 	"encoding/json"
 	"testing"
+
+	"github.com/toritori0318/inkshade/pkg/inkshade"
 )
 
 func TestSarifOutputSchema(t *testing.T) {
-	findings := []Finding{
+	findings := []inkshade.Finding{
 		{RuleID: "email", Name: "Email Address", Start: 8, End: 26, Text: "tanaka@example.com", Replace: "[EMAIL]"},
 	}
 	data := buildSarif("test.txt", map[int]lineData{1: {Findings: findings, Text: "contact tanaka@example.com here"}})
@@ -46,13 +48,13 @@ func TestSarifOutputSchema(t *testing.T) {
 func TestSarifOutputMultipleFindings(t *testing.T) {
 	lines := map[int]lineData{
 		1: {
-			Findings: []Finding{
+			Findings: []inkshade.Finding{
 				{RuleID: "email", Name: "Email Address", Start: 0, End: 18, Text: "tanaka@example.com", Replace: "[EMAIL]"},
 			},
 			Text: "tanaka@example.com",
 		},
 		3: {
-			Findings: []Finding{
+			Findings: []inkshade.Finding{
 				{RuleID: "phone", Name: "Phone Number (JP)", Start: 5, End: 18, Text: "090-1234-5678", Replace: "[PHONE]"},
 				{RuleID: "ip_addr", Name: "IPv4 Address", Start: 20, End: 33, Text: "192.168.1.100", Replace: "[IP_ADDR]"},
 			},
