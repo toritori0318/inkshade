@@ -1,0 +1,13 @@
+{
+  "name": "inkshade",
+  "description": "inkshade integrations for Claude Code",
+  "owner": {
+    "name": "toritori0318"
+  },
+  "plugins": [
+    {
+      "name": "inkshade",
+      "source": "./cmd/inkshade-claude-hook"
+    }
+  ]
+}

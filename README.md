@@ -42,6 +42,10 @@ e := inkshade.NewEngine(inkshade.DefaultConfig())
 masked := e.Process(line).Output
 ```
 
+## Claude Code
+
+The release archive includes `inkshade-claude-hook` next to `inkshade`. It is a Claude Code plugin that checks prompts and tool output before they reach the model. Install steps and the stop/mask choice are in [cmd/inkshade-claude-hook/README.md](cmd/inkshade-claude-hook/README.md).
+
 ## Quick Start
 
 ```bash
