@@ -33,6 +33,15 @@ cd inkshade
 go build -o inkshade .
 ```
 
+## Use as a library
+
+```go
+import "github.com/toritori0318/inkshade/pkg/inkshade"
+
+e := inkshade.NewEngine(inkshade.DefaultConfig())
+masked := e.Process(line).Output
+```
+
 ## Quick Start
 
 ```bash

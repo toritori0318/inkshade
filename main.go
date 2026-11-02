@@ -10,6 +10,8 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+
+	"github.com/toritori0318/inkshade/pkg/inkshade"
 )
 
 var version = "dev"
@@ -37,20 +39,20 @@ func main() {
 	flagSet := map[string]bool{}
 	flag.Visit(func(f *flag.Flag) { flagSet[f.Name] = true })
 
-	var cfg Config
+	var cfg inkshade.Config
 	if *configFile != "" {
 		var err error
-		cfg, err = LoadConfig(*configFile)
+		cfg, err = inkshade.LoadConfig(*configFile)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "inkshade: %v\n", err)
 			os.Exit(1)
 		}
 	} else {
-		cfg = DefaultConfig()
+		cfg = inkshade.DefaultConfig()
 	}
 
 	if flagSet["mode"] || *configFile == "" {
-		cfg.Mode = Mode(*mode)
+		cfg.Mode = inkshade.Mode(*mode)
 	}
 
 	if *disable != "" {
@@ -72,25 +74,25 @@ func main() {
 		cfg.EnabledPreset = *preset
 	}
 
-	switch Mode(*mode) {
-	case ModeMask, ModeDetect, ModeDiagnose:
+	switch inkshade.Mode(*mode) {
+	case inkshade.ModeMask, inkshade.ModeDetect, inkshade.ModeDiagnose:
 	default:
 		fmt.Fprintf(os.Stderr, "inkshade: unknown mode %q (valid: mask, detect, diagnose)\n", *mode)
 		os.Exit(1)
 	}
 
-	if err := ValidatePreset(cfg.EnabledPreset); err != nil {
+	if err := inkshade.ValidatePreset(cfg.EnabledPreset); err != nil {
 		fmt.Fprintf(os.Stderr, "inkshade: %v\n", err)
 		os.Exit(1)
 	}
 
 	if flagSet["mask-style"] || *configFile == "" {
-		cfg.MaskStyle = MaskStyle(*maskStyle)
+		cfg.MaskStyle = inkshade.MaskStyle(*maskStyle)
 	}
 
-	engine := NewEngine(cfg)
+	engine := inkshade.NewEngine(cfg)
 
-	if *dryRun && cfg.Mode != ModeMask {
+	if *dryRun && cfg.Mode != inkshade.ModeMask {
 		fmt.Fprintf(os.Stderr, "inkshade: --dry-run only works with mask mode\n")
 		os.Exit(1)
 	}
@@ -146,7 +148,7 @@ func main() {
 	}
 }
 
-func processReader(engine *Engine, cfg Config, reader io.Reader, writer io.Writer, format string, dryRun bool) (bool, error) {
+func processReader(engine *inkshade.Engine, cfg inkshade.Config, reader io.Reader, writer io.Writer, format string, dryRun bool) (bool, error) {
 	scanner := bufio.NewScanner(reader)
 	scanner.Buffer(make([]byte, 1024), 10*1024*1024)
 
@@ -171,10 +173,10 @@ func processReader(engine *Engine, cfg Config, reader io.Reader, writer io.Write
 		}
 
 		switch cfg.Mode {
-		case ModeMask:
+		case inkshade.ModeMask:
 			fmt.Fprintln(writer, result.Output)
 
-		case ModeDetect:
+		case inkshade.ModeDetect:
 			switch format {
 			case "ndjson":
 				rec := map[string]any{
@@ -199,7 +201,7 @@ func processReader(engine *Engine, cfg Config, reader io.Reader, writer io.Write
 				}
 			}
 
-		case ModeDiagnose:
+		case inkshade.ModeDiagnose:
 			switch format {
 			case "ndjson", "json":
 				for _, f := range result.Findings {
@@ -227,7 +229,7 @@ func processReader(engine *Engine, cfg Config, reader io.Reader, writer io.Write
 	return detected, scanner.Err()
 }
 
-func processSarif(engine *Engine, reader io.Reader, writer io.Writer, filename string) (bool, error) {
+func processSarif(engine *inkshade.Engine, reader io.Reader, writer io.Writer, filename string) (bool, error) {
 	scanner := bufio.NewScanner(reader)
 	scanner.Buffer(make([]byte, 1024), 10*1024*1024)
 
@@ -255,7 +257,7 @@ func processSarif(engine *Engine, reader io.Reader, writer io.Writer, filename s
 	return detected, nil
 }
 
-func processGitStaged(engine *Engine, cfg Config, format string, dryRun bool, failOnDetect bool, outputPath string) int {
+func processGitStaged(engine *inkshade.Engine, cfg inkshade.Config, format string, dryRun bool, failOnDetect bool, outputPath string) int {
 	toplevelOut, err := exec.Command("git", "rev-parse", "--show-toplevel").Output()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "inkshade: git rev-parse failed: %v\n", err)
@@ -330,4 +332,11 @@ func processGitStaged(engine *Engine, cfg Config, format string, dryRun bool, fa
 		return 1
 	}
 	return 0
+}
+
+func formatDryRunDiff(original, masked string, lineNum int) string {
+	if original == masked {
+		return ""
+	}
+	return fmt.Sprintf("@@ line %d @@\n-%s\n+%s", lineNum, original, masked)
 }

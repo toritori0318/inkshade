@@ -1,4 +1,4 @@
-package main
+package inkshade
 
 import (
 	"math"
