@@ -1,17 +1,26 @@
 version: 2
 
 builds:
-  - env:
+  - id: inkshade
+    env: &env
       - CGO_ENABLED=0
-    goos:
+    goos: &goos
       - linux
       - darwin
       - windows
-    goarch:
+    goarch: &goarch
       - amd64
       - arm64
     ldflags:
       - -s -w -X main.version={{.Version}}
+  - id: inkshade-claude-hook
+    main: ./cmd/inkshade-claude-hook
+    binary: inkshade-claude-hook
+    env: *env
+    goos: *goos
+    goarch: *goarch
+    ldflags:
+      - -s -w
 
 archives:
   - formats: [tar.gz]
@@ -29,7 +38,7 @@ brews:
     description: "Mask PII and credentials in text streams"
     license: "MIT"
     install: |
-      bin.install "inkshade"
+      bin.install "inkshade", "inkshade-claude-hook"
     test: |
       assert_match version.to_s, shell_output("#{bin}/inkshade --version")
 

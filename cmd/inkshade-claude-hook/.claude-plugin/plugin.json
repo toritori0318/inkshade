@@ -1,0 +1,18 @@
+{
+  "name": "inkshade",
+  "description": "Stop or mask PII and credentials in prompts and tool output before they reach the model",
+  "author": {
+    "name": "toritori0318"
+  },
+  "repository": "https://github.com/toritori0318/inkshade",
+  "license": "MIT",
+  "userConfig": {
+    "action": {
+      "type": "string",
+      "title": "Action on tool output",
+      "description": "stop: mask the output and stop Claude. mask: mask the output and keep going.",
+      "options": ["stop", "mask"],
+      "default": "stop"
+    }
+  }
+}
