@@ -210,6 +210,29 @@ custom_rules:
 	}
 }
 
+func TestCustomRuleRejectsEmptyReplace(t *testing.T) {
+	cases := []string{
+		"replace: \"\"",
+		"# replace omitted",
+	}
+	for _, replaceLine := range cases {
+		dir := t.TempDir()
+		path := filepath.Join(dir, "inkshade.yaml")
+		os.WriteFile(path, []byte(`
+custom_rules:
+  - id: widget_token
+    name: Widget Token
+    pattern: 'WIDGET-[0-9A-Za-z]{8}'
+    `+replaceLine+`
+`), 0644)
+
+		_, err := LoadConfig(path)
+		if err == nil {
+			t.Errorf("expected error when replace is %q", replaceLine)
+		}
+	}
+}
+
 func TestCustomRuleRejectsBuiltInID(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "inkshade.yaml")
